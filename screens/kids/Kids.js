@@ -1,31 +1,25 @@
 import * as React from 'react';
-import { View, ScrollView, Text, Image, TouchableOpacity, Linking, RefreshControl } from 'react-native';
-import { Button, ActivityIndicator } from 'react-native-paper';
-import { Card, Icon } from 'react-native-elements'
+import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { SearchBar } from 'react-native-elements';
 import tailwind from 'tailwind-rn';
 import axios from '../../services/AxiosConfig';
-import AsyncStorage from '@react-native-community/async-storage';
+import KidCard from '../../components/KidCard'
+import { AuthContext } from "../../App";
 
 function KidsScreen({ navigation }) {
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const { state } = React.useContext(AuthContext);
+  const [search, setSearch] = React.useState('');
   const [kids, setKids] = React.useState([]);
-  const [parents, setParents] = React.useState([]);
-  const [token, setToken] = React.useState();
   const [loading, setLoading] = React.useState(true);
 
   const fetchData = async () => {
     try {
       // setLoading(true)
-      let token = await AsyncStorage.getItem('token');
-      setToken(token)
       const headers = {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${state.token}`
       };
       let res = await axios.get('/kids', { headers })
       setKids(res.data)
-      let res2 = await axios.get('/parents', { headers })
-      setParents(res2.data)
       setLoading(false)
       console.log('loaded')
     } catch (e) {
@@ -41,11 +35,18 @@ function KidsScreen({ navigation }) {
     }
   }
 
-  const findParent = (parent_id, type) => {
-    let parent = parents.find(p => {
-      return p.id == parent_id
-    })
-    return parent ? parent[type] : ''
+  const searchKid = async (input) => {
+    try {
+      setSearch(input)
+      const headers = {
+        'Authorization': `Bearer ${state.token}`
+      };
+      let res = await axios.get(`/search/${input}`, { headers })
+      setKids(res.data)
+      console.log('loaded')
+    } catch (e) {
+      setLoading(false)
+    }
   }
 
   React.useEffect(() => {
@@ -57,53 +58,22 @@ function KidsScreen({ navigation }) {
 
   return (
     <View style={tailwind('flex h-full justify-center')}>
+      <SearchBar
+        containerStyle={tailwind('px-4')}
+        lightTheme
+        placeholder="Search..."
+        onChangeText={searchKid}
+        value={search}
+      />
       <ScrollView refreshControl={
         <RefreshControl refreshing={loading} onRefresh={fetchData} />
       }>
-        <ActivityIndicator animating={loading} />
         {kids.map((r, key) =>
           <TouchableOpacity key={key} onPress={() => navigation.navigate('Kid Details', {
             title: r.name,
             kid: r
           })}>
-            <Card style={tailwind('rounded')}>
-              <View style={tailwind('flex flex-row items-center')}>
-                <View style={tailwind('w-1/4')}>
-                  <Image
-                    style={tailwind('w-20 h-20 rounded-full')}
-                    source={{ uri: r.picture }}
-                  />
-                </View>
-                <View style={tailwind('w-3/4 px-4')}>
-                  <Text>Name {r.name}</Text>
-                  <Text>Gender: {r.gender}</Text>
-                  <Text>Birthday: {r.birthdate}</Text>
-                  <Text>Allergies: {r.allergies}</Text>
-                  <Text style={tailwind('font-bold mt-4')}>Parents</Text>
-                  {r.kid_parents.map((x, key2) =>
-                    <View key={key2} style={tailwind('flex flex-row items-center justify-between mb-2')}>
-                      <Text>{findParent(x.parent_id, 'name')}</Text>
-                      <View style={tailwind('flex flex-row')}>
-                        <Icon
-                          containerStyle={tailwind('w-8 h-8 flex justify-center border border-gray-500 rounded-full mx-1')}
-                          color='#2089dc'
-                          size={16}
-                          name='phone'
-                          type='font-awesome'
-                          onPress={() => Linking.openURL(`tel:${findParent(x.parent_id, 'contact')}`)} />
-                        <Icon
-                          containerStyle={tailwind('w-8 h-8 flex justify-center border border-gray-500 rounded-full mx-1')}
-                          color='#2089dc'
-                          size={16}
-                          name='envelope'
-                          type='font-awesome'
-                          onPress={() => Linking.openURL(`tel:${findParent(x.parent_id, 'email')}`)} />
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </Card>
+            <KidCard navigation={navigation} kid={r}></KidCard>
           </TouchableOpacity>
         )}
       </ScrollView>

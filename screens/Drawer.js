@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { AuthContext } from "../App";
 
 import {
   DrawerItem,
@@ -22,27 +23,18 @@ import tailwind from 'tailwind-rn';
 
 function DrawerContent(props) {
   const paperTheme = useTheme();
+  const { dispatch } = React.useContext(AuthContext);
 
   return (
     <DrawerContentScrollView {...props}>
-        <Drawer.Section title="Navigation">
-            <DrawerItemList {...props} />
-          </Drawer.Section>
-        <Drawer.Section title="Preferences">
-          <TouchableRipple onPress={props.toggleTheme}>
-            <View style={styles.preference}>
-              <Text>Dark Theme</Text>
-              <View pointerEvents="none">
-                <Switch value={false} />
-              </View>
-            </View>
-          </TouchableRipple>
-          <DrawerItem
-              labelStyle={tailwind('text-red-600 font-bold')}
-              label="Logout"
-              onPress={() => props.navigation.navigate('Login')}
-              />
-        </Drawer.Section>
+      <Drawer.Section title="Navigation" style={tailwind('text-xl')}>
+        <DrawerItemList {...props} />
+      </Drawer.Section>
+      <DrawerItem
+        labelStyle={tailwind('text-red-600 font-bold')}
+        label="Logout"
+        onPress={() => { dispatch({ type: 'SIGN_OUT' }) }}
+      />
     </DrawerContentScrollView>
   );
 }

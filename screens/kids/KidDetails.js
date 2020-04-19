@@ -4,23 +4,29 @@ import { Text, Avatar, Input, CheckBox, Icon, Button } from 'react-native-elemen
 import { Picker } from '@react-native-community/picker';
 import tailwind from 'tailwind-rn';
 import axios from '../../services/AxiosConfig';
-import AsyncStorage from '@react-native-community/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ImagePicker from 'react-native-image-picker';
-import { Snackbar } from 'react-native-paper';
+import Modal from 'react-native-modal';
+import { Snackbar, Chip } from 'react-native-paper';
+import MultiSelect from 'react-native-multiple-select';
+import { AuthContext } from "../../App";
 
 function KidDetails({ route, navigation }) {
   const { kid } = route.params;
+  const { state } = React.useContext(AuthContext);
   const [data, setData] = React.useState({
     name: '',
     gender: '',
     dob: '',
     allergies: '',
   });
-  const [token, setToken] = React.useState();
+  const [parents, setParents] = React.useState([]);
+  const [selectedParents, setSelectedParents] = React.useState([]);
+  const [multiSelect, setMultiSelect] = React.useState();
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [visible, setVisible] = React.useState(false);
+  const [modalVisible, setModalVisible] = React.useState(false);
   const getDob = () => {
     let arr = data.birthdate.split('-')
     console.log(arr.length, 'length');
@@ -64,28 +70,41 @@ function KidDetails({ route, navigation }) {
 
   const updateKid = async () => {
     setLoading(true)
-    let token = await AsyncStorage.getItem('token');
-    setToken(token)
     const headers = {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${state.token}`
     };
-
-    // Extract parent's id from collection
-    let parent_ids = []
-    for (let x of kid.kid_parents) {
-      parent_ids.push(x.parent_id)
-    }
 
     let res = await axios.put(`/kids/${kid.id}`, {
       name: data.name,
       gender: data.gender,
       birthdate: data.birthdate,
       allergies: data.allergies,
-      parents: parent_ids
+      parents: selectedParents
     }, { headers })
     console.log(res)
     _onToggleSnackBar()
     navigation.navigate('Kids')
+  };
+
+  const fetchParents = async () => {
+    try {
+      const headers = {
+        'Authorization': `Bearer ${state.token}`
+      };
+
+      let res = await axios.get(`/parents`, { headers })
+      console.log(res)
+      setParents(res.data)
+
+      // Push parents to multiselect 
+      let arr = []
+      kid.kid_parents.map((x) => {
+        arr.push(x.id)
+      });
+      setSelectedParents(arr)
+    } catch (e) {
+
+    }
   };
 
   const _onToggleSnackBar = () => setVisible(true);
@@ -94,6 +113,7 @@ function KidDetails({ route, navigation }) {
 
   React.useEffect(() => {
     setData(kid)
+    fetchParents()
   }, []);
 
   return (
@@ -152,10 +172,51 @@ function KidDetails({ route, navigation }) {
           <Text style={styles.label}>Allergies</Text>
           <Input
             value={data.allergies}
+            multiline
             onChangeText={allergies => setData({ ...data, allergies: allergies })}
           />
         </View>
-        <View>
+        <View style={tailwind('mb-4')}>
+          <Text style={styles.label}>Parents</Text>
+          <View style={tailwind('flex px-4 mb-4')}>
+            <MultiSelect
+              hideSubmitButton
+              items={parents}
+              uniqueKey="id"
+              onSelectedItemsChange={(item) => { setSelectedParents(item) }}
+              selectedItems={selectedParents}
+              selectText="Select Parents"
+              searchInputPlaceholderText="Search Parents..."
+              altFontFamily="ProximaNova-Light"
+              tagRemoveIconColor="#aaa"
+              tagBorderColor="#ccc"
+              tagTextColor="#000"
+              selectedItemTextColor="#000"
+              selectedItemIconColor="#000"
+              itemTextColor="#000"
+              displayKey="name"
+              searchInputStyle={{ color: '#ccc' }}
+              submitButtonColor="#ccc"
+              submitButtonText="Submit"
+            />
+          </View>
+          <Modal
+            isVisible={modalVisible}
+            onBackdropPress={() => { setModalVisible(false) }}
+            onBackButtonPress={() => { setModalVisible(false) }}
+          >
+            <View style={tailwind('bg-white flex rounded p-4')}>
+              {parents.map((x, key) =>
+                <CheckBox
+                  key={key}
+                  title={x.name}
+                  checked={parents}
+                />
+              )}
+            </View>
+          </Modal>
+        </View>
+        <View style={tailwind('mb-4')}>
           <Button
             title="Update"
             onPress={updateKid}
