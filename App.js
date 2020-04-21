@@ -72,7 +72,7 @@ function App() {
       dispatch({ type: 'SIGN_OUT' });
       console.log('token cleared')
     }
-    console.log(error.response.status);
+    console.log(error.response);
     // handle the response error
     return Promise.reject(error);
   });
@@ -103,11 +103,6 @@ function App() {
   );
 
   React.useEffect(() => {
-    // getUserInfo().then((res) => {
-    //   setIsSignedIn(true)
-    //   setIsLoading(false)
-    //   console.table(res)
-    // })
     const bootstrapAsync = async () => {
       let token;
       let res;
@@ -115,14 +110,16 @@ function App() {
 
       try {
         token = await AsyncStorage.getItem('token');
-        // Load logged in user
-        const headers = {
-          'Authorization': `Bearer ${token}`
-        };
-        console.log(headers, 'what');
-        res = await axios.post('/user', {}, { headers })
-        console.log(res.data, 'data');
-        success = true
+        if (token) {
+          // Load logged in user
+          const headers = {
+            'Authorization': `Bearer ${token}`
+          };
+          console.log(headers, 'what');
+          res = await axios.post('/user', {}, { headers })
+          console.log(res.data.success, 'data');
+          success = true
+        }
       } catch (e) {
         console.log(e.response)
         // Restoring token failed
@@ -133,7 +130,7 @@ function App() {
       // This will switch to the App screen or Auth screen and this loading
       // screen will be unmounted and thrown away.
       if (success) {
-        dispatch({ type: 'RESTORE_TOKEN', token: token, user: res.data });
+        dispatch({ type: 'RESTORE_TOKEN', token: token, user: res.data.success });
       }
     };
 

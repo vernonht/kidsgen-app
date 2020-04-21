@@ -2,19 +2,21 @@ import * as React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Avatar, Input, CheckBox, Icon, Button } from 'react-native-elements';
 import { Picker } from '@react-native-community/picker';
-import tailwind from 'tailwind-rn';
-import axios from '../../services/AxiosConfig';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ImagePicker from 'react-native-image-picker';
 import Modal from 'react-native-modal';
-import { Snackbar, Chip } from 'react-native-paper';
+import { Snackbar } from 'react-native-paper';
+import tailwind from 'tailwind-rn';
+import moment from "moment";
+import axios from '../../services/AxiosConfig';
 import MultiSelect from 'react-native-multiple-select';
 import { AuthContext } from "../../App";
 
 function KidDetails({ route, navigation }) {
-  const { kid } = route.params;
+  const { kid, formType } = route.params;
   const { state } = React.useContext(AuthContext);
   const [data, setData] = React.useState({
+    picture: '',
     name: '',
     gender: '',
     dob: '',
@@ -22,13 +24,14 @@ function KidDetails({ route, navigation }) {
   });
   const [parents, setParents] = React.useState([]);
   const [selectedParents, setSelectedParents] = React.useState([]);
-  const [multiSelect, setMultiSelect] = React.useState();
+  const [uploadedPicture, setUploadedPicture] = React.useState();
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [visible, setVisible] = React.useState(false);
   const [modalVisible, setModalVisible] = React.useState(false);
   const getDob = () => {
-    let arr = data.birthdate.split('-')
+    const birthdate = data.birthdate ? data.birthdate : moment().format("YYYY-MM-DD")
+    let arr = birthdate.split('-')
     console.log(arr.length, 'length');
     if (arr.length >= 3) {
       return new Date(arr[0], parseInt(arr[1]) - 1, arr[2])
@@ -38,7 +41,8 @@ function KidDetails({ route, navigation }) {
   };
   const setDob = (event, date) => {
     console.log(date);
-    setData({ ...data, birthdate: date.toISOString().split('T')[0] })
+    setData({ ...data, birthdate: moment(date).format("YYYY-MM-DD") })
+    setShowDatePicker(false)
   };
   const options = {
     title: 'Select Avatar',
@@ -58,32 +62,62 @@ function KidDetails({ route, navigation }) {
       } else if (response.customButton) {
         console.log('User tapped custom button: ', response.customButton);
       } else {
-        const source = { uri: response.uri };
+        const source = { uri: 'data:' + response.type + ';base64,' + response.data };
 
-        // You can also display the image using data:
-        // const source = { uri: 'data:image/jpeg;base64,' + response.data };
-
+        setUploadedPicture(response)
+        // set data.picture for image preview
+        setData({ ...data, picture: source.uri })
         console.log(source)
       }
     });
   };
 
   const updateKid = async () => {
-    setLoading(true)
-    const headers = {
-      'Authorization': `Bearer ${state.token}`
-    };
+    try {
+      let res;
+      setLoading(true)
+      const headers = {
+        'Authorization': `Bearer ${state.token}`
+      };
 
-    let res = await axios.put(`/kids/${kid.id}`, {
-      name: data.name,
-      gender: data.gender,
-      birthdate: data.birthdate,
-      allergies: data.allergies,
-      parents: selectedParents
-    }, { headers })
-    console.log(res)
-    _onToggleSnackBar()
-    navigation.navigate('Kids')
+      if (kid) {
+        res = await axios.put(`/kids/${kid.id}`, {
+          name: data.name,
+          gender: data.gender,
+          birthdate: data.birthdate,
+          allergies: data.allergies,
+          parents: selectedParents
+        }, { headers })
+      } else {
+        res = await axios.post(`/kids/`, {
+          name: data.name,
+          gender: data.gender,
+          birthdate: data.birthdate,
+          allergies: data.allergies,
+          parents: selectedParents
+        }, { headers })
+      }
+
+      // Upload photo
+      if (uploadedPicture) {
+        let formdata = new FormData();
+        console.table(res)
+        console.log(uploadedPicture)
+        formdata.append("picture", uploadedPicture.data)
+        formdata.append("picture_name", uploadedPicture.fileName)
+        formdata.append("id", kid ? data.id : res.data.id) //if new kid, use id return form prev api call
+        formdata.append("type", 'kid')
+        let uploadPhoto = await axios.post(`/mobile/photos`, formdata, { headers })
+        console.log(uploadPhoto)
+      } else {
+        console.log('same')
+      }
+      _onToggleSnackBar()
+      navigation.navigate('Kids')
+    } catch (e) {
+      console.log(e, '121')
+      setLoading(false)
+    }
   };
 
   const fetchParents = async () => {
@@ -112,23 +146,33 @@ function KidDetails({ route, navigation }) {
   const _onDismissSnackBar = () => setVisible(false);
 
   React.useEffect(() => {
-    setData(kid)
+    if (formType == 'edit') {
+      setData(kid)
+    }
     fetchParents()
-  }, []);
+  }, [kid]);
 
   return (
     <ScrollView>
       <View style={tailwind('flex justify-center px-4 overflow-scroll')}>
         <View style={tailwind('flex items-center my-4')}>
-          <Avatar
-            rounded
-            size='xlarge'
-            source={{
-              uri: data.picture,
-            }}
-            showEditButton
-            onEditPress={launchCam}
-          />
+          {data.picture ?
+            <Avatar
+              rounded
+              size='xlarge'
+              source={{ uri: data.picture }}
+              showEditButton
+              onEditPress={launchCam}
+            />
+            :
+            <Avatar
+              rounded
+              size='xlarge'
+              icon={{ name: 'child', type: 'font-awesome' }}
+              showEditButton
+              onEditPress={launchCam}
+            />
+          }
         </View>
         <View style={tailwind('mb-4')}>
           <Text style={styles.label}>Name</Text>
@@ -163,6 +207,7 @@ function KidDetails({ route, navigation }) {
             <DateTimePicker
               value={getDob()}
               mode="date"
+              maximumDate={new Date}
               display="default"
               onChange={setDob}
             />

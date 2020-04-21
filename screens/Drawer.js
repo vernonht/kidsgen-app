@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Icon } from 'react-native-elements'
+import AsyncStorage from '@react-native-community/async-storage';
 import { AuthContext } from "../App";
 
 import {
@@ -23,18 +25,56 @@ import tailwind from 'tailwind-rn';
 
 function DrawerContent(props) {
   const paperTheme = useTheme();
-  const { dispatch } = React.useContext(AuthContext);
+  const { state, dispatch } = React.useContext(AuthContext);
+
+  const logout = async () => {
+    await AsyncStorage.removeItem('token');
+    dispatch({ type: 'SIGN_OUT' })
+  }
+  React.useEffect(() => {
+    console.table(props)
+  }, []);
 
   return (
     <DrawerContentScrollView {...props}>
-      <Drawer.Section title="Navigation" style={tailwind('text-xl')}>
-        <DrawerItemList {...props} />
+      <View style={tailwind('bg-blue-200 h-32 flex flex-row items-center px-2')}>
+        <Icon
+          raised
+          name='user'
+          type='font-awesome'
+        />
+        <Text style={tailwind('px-4 text-base font-bold')}>{state.user ? state.user['name'] : 'Guest'}</Text>
+      </View>
+      <Drawer.Section style={tailwind('text-xl')}>
+        <DrawerItem
+          label="Home"
+          onPress={() => props.navigation.navigate('Home')}
+        />
+        {state.user ?
+          <DrawerItem
+            label="Manage Kids"
+            onPress={() => props.navigation.navigate('Kids')}
+          />
+          : null
+        }
+        <DrawerItem
+          label="Scan QR"
+          onPress={() => props.navigation.navigate('Scan QR')}
+        />
       </Drawer.Section>
-      <DrawerItem
-        labelStyle={tailwind('text-red-600 font-bold')}
-        label="Logout"
-        onPress={() => { dispatch({ type: 'SIGN_OUT' }) }}
-      />
+      {state.user ?
+        <DrawerItem
+          labelStyle={tailwind('text-red-600 font-bold')}
+          label="Logout"
+          onPress={logout}
+        />
+        :
+        <DrawerItem
+          labelStyle={tailwind('text-blue-600 font-bold')}
+          label="Login"
+          onPress={() => props.navigation.navigate('Login')}
+        />
+      }
     </DrawerContentScrollView>
   );
 }

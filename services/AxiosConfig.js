@@ -6,7 +6,7 @@ import { AuthContext } from "../App";
 // Next we make an 'instance' of it
 const instance = axios.create({
   // .. where we make our configurations
-  baseURL: 'http://0a93865f.ap.ngrok.io'
+  baseURL: 'https://0a93865f.ap.ngrok.io'
   // baseURL: 'https://backend.harvestgen.org'
 });
 

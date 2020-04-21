@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { View, Image, Linking } from 'react-native';
-import { Card, Icon, Text, Button, Input } from 'react-native-elements';
+import { View, Linking } from 'react-native';
+import { Card, Icon, Text, Button, Avatar } from 'react-native-elements';
 import tailwind from 'tailwind-rn';
 import { AuthContext } from "../App";
 
@@ -27,10 +27,19 @@ function KidCard(props) {
         <Card style={tailwind('rounded')}>
           <View style={tailwind('flex flex-row items-center')}>
             <View style={tailwind('w-1/4')}>
-              <Image
-                style={tailwind('w-20 h-20 rounded-full')}
-                source={{ uri: kid.picture }}
-              />
+              {kid.picture ?
+                <Avatar
+                  rounded
+                  size='large'
+                  source={{ uri: kid.picture }}
+                />
+                :
+                <Avatar
+                  rounded
+                  size='large'
+                  icon={{ name: 'child', type: 'font-awesome' }}
+                />
+              }
             </View>
             <View style={tailwind('w-3/4 px-4')}>
               <Text>Name {kid.name}</Text>
