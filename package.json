@@ -23,7 +23,7 @@
     "@react-navigation/stack": "^5.2.9",
     "axios": "^0.19.2",
     "formik": "^2.1.4",
-    "moment": "^2.24.0",
+    "moment": "^2.29.4",
     "react": "16.11.0",
     "react-native": "0.62.1",
     "react-native-action-button": "^2.8.5",
